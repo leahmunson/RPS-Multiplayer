@@ -1,4 +1,4 @@
-// Initialize Firebase
+//Initialize firebase to authenticate firebase interactions
 var config = {
     apiKey: "AIzaSyAgEuXgOYwmHK_RqpVzMIJDRLD5ZB7UbbQ",
     authDomain: "rps-multi-7fedd.firebaseapp.com",
@@ -8,6 +8,7 @@ var config = {
   
   firebase.initializeApp(config);
   
+  //Creating the global variables
   var database = firebase.database();
   var chatData = database.ref("/chat");
   var playersRef = database.ref("players");
@@ -23,6 +24,8 @@ var config = {
   
   // USERNAME LISTENERS
   // Start button - takes username and tries to get user in game
+  //if the user name is not blank, then capitalize input and call the getInGame function
+
   $("#start").click(function() {
     if ($("#username").val() !== "") {
       username = capitalize($("#username").val());
@@ -31,6 +34,7 @@ var config = {
   });
   
   // listener for 'enter' in username input
+  // code will execute after the username input
   $("#username").keypress(function(e) {
     if (e.which === 13 && $("#username").val() !== "") {
       username = capitalize($("#username").val());
@@ -39,12 +43,14 @@ var config = {
   });
   
   // Function to capitalize usernames
+  // need to change the case toUpperCase to keep the username input equal
   function capitalize(name) {
     return name.charAt(0).toUpperCase() + name.slice(1);
   }
   
   // CHAT LISTENERS
   // Chat send button listener, grabs input and pushes to firebase. (Firebase's push automatically creates a unique key)
+  // Firebase takes the input and stores it on Firebase
   $("#chat-send").click(function() {
     if ($("#chat-input").val() !== "") {
       var message = $("#chat-input").val();
@@ -61,7 +67,7 @@ var config = {
   });
   
   // Chatbox input listener
-  
+  // when user presses the key 'enter,' the below code runs a check on the input
   $("#chat-input").keypress(function(e) {
     if (e.which === 13 && $("#chat-input").val() !== "") {
       var message = $("#chat-input").val();
@@ -82,13 +88,16 @@ var config = {
     console.log("click");
   
     // Grabs text from li choice
+    // uses "this" to grab the button choice from the options in the <li>'s
     var clickChoice = $(this).text();
     console.log(playerRef);
   
     // Sets the choice in the current player object in firebase
+    // Adds the choice to Firebase to store the data, which will be used later
     playerRef.child("choice").set(clickChoice);
   
     // User has chosen, so removes choices and displays what they chose
+    // other choices cleared
     $("#player" + playerNum + " ul").empty();
     $("#player" + playerNum + "chosen").text(clickChoice);
   
@@ -113,25 +122,30 @@ var config = {
   });
   
   // Tracks changes in key which contains player objects
+  //takes a snapshot of the players ref
   playersRef.on("value", function(snapshot) {
     // length of the 'players' array
+    // this keeps track of numChildren
     currentPlayers = snapshot.numChildren();
   
-    // Check to see if players exist
+    // Check to see if players exist - are both players there or ot
     playerOneExists = snapshot.child("1").exists();
     playerTwoExists = snapshot.child("2").exists();
   
     // Player data objects
+    // Shows the actual value of the players choices
     playerOneData = snapshot.child("1").val();
     playerTwoData = snapshot.child("2").val();
   
     // If theres a player 1, fill in name and win loss data
+    //update player 1 data
     if (playerOneExists) {
       $("#player1-name").text(playerOneData.name);
       $("#player1-wins").text("Wins: " + playerOneData.wins);
       $("#player1-losses").text("Losses: " + playerOneData.losses);
     } else {
       // If there is no player 1, clear win/loss data and show waiting
+      // this will clear the info from player 1
       $("#player1-name").text("Waiting for Player 1");
       $("#player1-wins").empty();
       $("#player1-losses").empty();
@@ -151,20 +165,24 @@ var config = {
   });
   
   // Detects changes in current turn key
+  // checks the turn order
   currentTurnRef.on("value", function(snapshot) {
     // Gets current turn from snapshot
+    // uses database for turn checker
     currentTurn = snapshot.val();
   
     // Don't do the following unless you're logged in
+    // aka playerNum is true
     if (playerNum) {
-      // For turn 1
+      // For turn 1 and if the current turn is 1
       if (currentTurn === 1) {
-        // If its the current player's turn, tell them and show choices
+        // If its the current player's turn, tell them and show the below choices
         if (currentTurn === playerNum) {
           $("#current-turn h2").text("It's Your Turn!");
           $("#player" + playerNum + " ul").append("<li>Rock</li><li>Paper</li><li>Scissors</li>");
         } else {
           // If it isn't the current players turn, tells them they're waiting for player one
+          // player gets a turn notification
           $("#current-turn h2").text("Waiting for " + playerOneData.name + " to choose.");
         }
   
@@ -188,11 +206,11 @@ var config = {
         // Where the game win logic takes place then resets to turn 1
         gameLogic(playerOneData.choice, playerTwoData.choice);
   
-        // reveal both player choices
+        // reveal both player choices and show players data
         $("#player1-chosen").text(playerOneData.choice);
         $("#player2-chosen").text(playerTwoData.choice);
   
-        //  reset after timeout
+        //  reset after timeout, function to clear data
         var moveOn = function() {
           $("#player1-chosen").empty();
           $("#player2-chosen").empty();
@@ -204,7 +222,7 @@ var config = {
           }
         };
   
-        //  show results for 2 seconds, then resets
+        //  show results for 2 seconds, then resets (timeout functions)
         setTimeout(moveOn, 2000);
       } else {
         //  if (playerNum) {
@@ -219,7 +237,7 @@ var config = {
     }
   });
   
-  // When a player joins, checks to see if there are two players now. If yes, then it will start the game.
+  // When a player joins, checks to see if there are two players now. If yes, then it will start the game. (2 players)
   playersRef.on("child_added", function(snapshot) {
     if (currentPlayers === 1) {
       // set turn to 1, which starts the game
@@ -227,7 +245,7 @@ var config = {
     }
   });
   
-  // Function to get in the game
+  // Function to get in the game, sets up chat data
   function getInGame() {
     // For adding disconnects to the chat with a unique id (the date/time the user entered the game)
     // Needed because Firebase's '.push()' creates its unique keys client side,
@@ -261,6 +279,7 @@ var config = {
       currentTurnRef.onDisconnect().remove();
   
       // Send disconnect message to chat with Firebase server generated timestamp and id of '0' to denote system message
+      // disconnects from database
       chatDataDisc.onDisconnect().set({
         name: username,
         time: firebase.database.ServerValue.TIMESTAMP,
@@ -274,6 +293,7 @@ var config = {
       $("#swap-zone").append($("<h2>").text("Hi " + username + "! You are Player " + playerNum));
     } else {
       // If current players is "2", will not allow the player to join
+      // sends alert that the game is full
       alert("Sorry, Game Full! Try Again Later!");
     }
   }
